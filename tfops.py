@@ -2,7 +2,7 @@ import tensorflow as tf
 from tensorflow.contrib.framework.python.ops import add_arg_scope, arg_scope
 from tensorflow.contrib.layers import variance_scaling_initializer
 import numpy as np
-import horovod.tensorflow as hvd
+# import horovod.tensorflow as hvd
 
 # Debugging function
 do_print_act_stats = True
@@ -27,13 +27,13 @@ def print_act_stats(x, _str=""):
 
 
 def allreduce_sum(x):
-    if hvd.size() == 1:
+    if 1 == 1:
         return x
     return hvd.mpi_ops._allreduce(x)
 
 
 def allreduce_mean(x):
-    x = allreduce_sum(x) / hvd.size()
+    x = allreduce_sum(x) / 1
     return x
 
 
@@ -211,7 +211,7 @@ def add_edge_padding(x, filter_size):
         name = "_".join([str(dim) for dim in [a, b, *int_shape(x)[1:3]]])
         pads = tf.get_collection(name)
         if not pads:
-            if hvd.rank() == 0:
+            if 0 == 0:
                 print("Creating pad", name)
             pad = np.zeros([1] + int_shape(x)[1:3] + [1], dtype='float32')
             pad[:, :a, :, 0] = 1.
