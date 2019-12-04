@@ -6,7 +6,6 @@ import os
 import sys
 import time
 
-import horovod.tensorflow as hvd
 import numpy as np
 import tensorflow as tf
 import graphics
@@ -19,7 +18,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 
 def _print(*args, **kwargs):
-    if hvd.rank() == 0:
+    if 0 == 0:
         print(*args, **kwargs)
 
 
@@ -34,7 +33,7 @@ def init_visualizations(hps, model, logdir):
         return np.concatenate(xs)
 
     def draw_samples(epoch):
-        if hvd.rank() != 0:
+        if 0 != 0:
             return
 
         rows = 10 if hps.image_size <= 64 else 4
@@ -74,7 +73,7 @@ def get_data(hps, sess):
                           'imagenet': 256, 'celeba': 256, 'lsun_realnvp': 64, 'lsun': 256}[hps.problem]
     if hps.n_test == -1:
         hps.n_test = {'mnist': 10000, 'cifar10': 10000, 'imagenet-oord': 50000, 'imagenet': 50000,
-                      'celeba': 3000, 'lsun_realnvp': 300*hvd.size(), 'lsun': 300*hvd.size()}[hps.problem]
+                      'celeba': 3000, 'lsun_realnvp': 300*1, 'lsun': 300*1}[hps.problem]
     hps.n_y = {'mnist': 10, 'cifar10': 10, 'imagenet-oord': 1000,
                'imagenet': 1000, 'celeba': 1, 'lsun_realnvp': 1, 'lsun': 1}[hps.problem]
     if hps.data_dir == "":
@@ -99,20 +98,20 @@ def get_data(hps, sess):
         s * s // (hps.image_size * hps.image_size)
 
     print("Rank {} Batch sizes Train {} Test {} Init {}".format(
-        hvd.rank(), hps.local_batch_train, hps.local_batch_test, hps.local_batch_init))
+        1, hps.local_batch_train, hps.local_batch_test, hps.local_batch_init))
 
     if hps.problem in ['imagenet-oord', 'imagenet', 'celeba', 'lsun_realnvp', 'lsun']:
         hps.direct_iterator = True
         import data_loaders.get_data as v
         train_iterator, test_iterator, data_init = \
-            v.get_data(sess, hps.data_dir, hvd.size(), hvd.rank(), hps.pmap, hps.fmap, hps.local_batch_train,
+            v.get_data(sess, hps.data_dir, hvd.size(), 1, hps.pmap, hps.fmap, hps.local_batch_train,
                        hps.local_batch_test, hps.local_batch_init, hps.image_size, hps.rnd_crop)
 
     elif hps.problem in ['mnist', 'cifar10']:
         hps.direct_iterator = False
         import data_loaders.get_mnist_cifar as v
         train_iterator, test_iterator, data_init = \
-            v.get_data(hps.problem, hvd.size(), hvd.rank(), hps.dal, hps.local_batch_train,
+            v.get_data(hps.problem, 2, 1, hps.dal, hps.local_batch_train,
                        hps.local_batch_test, hps.local_batch_init, hps.image_size)
 
     else:
@@ -133,14 +132,14 @@ def process_results(results):
 def main(hps):
 
     # Initialize Horovod.
-    hvd.init()
+    # hvd.init()
 
     # Create tensorflow session
     sess = tensorflow_session()
 
     # Download and load dataset.
-    tf.set_random_seed(hvd.rank() + hvd.size() * hps.seed)
-    np.random.seed(hvd.rank() + hvd.size() * hps.seed)
+    # tf.set_random_seed(hvd.rank() + hvd.size() * hps.seed)
+    # np.random.seed(hvd.rank() + hvd.size() * hps.seed)
 
     # Get data and set train_its and valid_its
     train_iterator, test_iterator, data_init = get_data(hps, sess)
@@ -158,11 +157,12 @@ def main(hps):
     # Initialize visualization functions
     visualise = init_visualizations(hps, model, logdir)
 
-    if not hps.inference:
-        # Perform training
-        train(sess, model, hps, logdir, visualise)
-    else:
-        infer(sess, model, hps, test_iterator)
+    if False:
+        if not hps.inference:
+            # Perform training
+            train(sess, model, hps, logdir, visualise)
+        else:
+            infer(sess, model, hps, test_iterator)
 
     save_model_np(model, './ckpt_np/q.pickle')
 
@@ -226,7 +226,7 @@ def train(sess, model, hps, logdir, visualise):
     train_time = 0.0
     test_loss_best = 999999
 
-    if hvd.rank() == 0:
+    if 0 == 0:
         train_logger = ResultLogger(logdir + "train.txt", **hps.__dict__)
         test_logger = ResultLogger(logdir + "test.txt", **hps.__dict__)
 
@@ -245,22 +245,22 @@ def train(sess, model, hps, logdir, visualise):
             # Run a training step synchronously.
             _t = time.time()
             train_results += [model.train(lr)]
-            if hps.verbose and hvd.rank() == 0:
+            if hps.verbose and 0 == 0:
                 _print(n_processed, time.time()-_t, train_results[-1])
                 sys.stdout.flush()
 
             # Images seen wrt anchor resolution
-            n_processed += hvd.size() * hps.n_batch_train
+            n_processed += 1 * hps.n_batch_train
             # Actual images seen at current resolution
-            n_images += hvd.size() * hps.local_batch_train
+            n_images += 1 * hps.local_batch_train
 
         train_results = np.mean(np.asarray(train_results), axis=0)
 
         dtrain = time.time() - t
-        ips = (hps.train_its * hvd.size() * hps.local_batch_train) / dtrain
+        ips = (hps.train_its * 1 * hps.local_batch_train) / dtrain
         train_time += dtrain
 
-        if hvd.rank() == 0:
+        if 0 == 0:
             train_logger.log(epoch=epoch, n_processed=n_processed, n_images=n_images, train_time=int(
                 train_time), **process_results(train_results))
 
@@ -277,7 +277,7 @@ def train(sess, model, hps, logdir, visualise):
                     test_results += [model.test()]
                 test_results = np.mean(np.asarray(test_results), axis=0)
 
-                if hvd.rank() == 0:
+                if 0 == 0:
                     test_logger.log(epoch=epoch, n_processed=n_processed,
                                     n_images=n_images, **process_results(test_results))
 
@@ -295,7 +295,7 @@ def train(sess, model, hps, logdir, visualise):
                 visualise(epoch)
             dsample = time.time() - t
 
-            if hvd.rank() == 0:
+            if 0 == 0:
                 dcurr = time.time() - tcurr
                 tcurr = time.time()
                 _print(epoch, n_processed, n_images, "{:.1f} {:.1f} {:.1f} {:.1f} {:.1f}".format(
@@ -309,17 +309,17 @@ def train(sess, model, hps, logdir, visualise):
 # Get number of training and validation iterations
 def get_its(hps):
     # These run for a fixed amount of time. As anchored batch is smaller, we've actually seen fewer examples
-    train_its = int(np.ceil(hps.n_train / (hps.n_batch_train * hvd.size())))
-    test_its = int(np.ceil(hps.n_test / (hps.n_batch_train * hvd.size())))
-    train_epoch = train_its * hps.n_batch_train * hvd.size()
+    train_its = int(np.ceil(hps.n_train / (hps.n_batch_train * 1)))
+    test_its = int(np.ceil(hps.n_test / (hps.n_batch_train * 1)))
+    train_epoch = train_its * hps.n_batch_train * 1
 
     # Do a full validation run
-    if hvd.rank() == 0:
-        print(hps.n_test, hps.local_batch_test, hvd.size())
-    assert hps.n_test % (hps.local_batch_test * hvd.size()) == 0
-    full_test_its = hps.n_test // (hps.local_batch_test * hvd.size())
+    if 0 == 0:
+        print(hps.n_test, hps.local_batch_test,1)
+    assert hps.n_test % (hps.local_batch_test * 1) == 0
+    full_test_its = hps.n_test // (hps.local_batch_test * 1)
 
-    if hvd.rank() == 0:
+    if 0 == 0:
         print("Train epoch size: " + str(train_epoch))
     return train_its, test_its, full_test_its
 
@@ -332,7 +332,7 @@ def tensorflow_session():
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
     # Pin GPU to local rank (one GPU per process)
-    config.gpu_options.visible_device_list = str(hvd.local_rank())
+    # config.gpu_options.visible_device_list = str(hvd.local_rank())
     sess = tf.Session(config=config)
     return sess
 
@@ -400,7 +400,7 @@ if __name__ == "__main__":
 
     # Model hyperparams:
     parser.add_argument("--image_size", type=int,
-                        default=-1, help="Image size")
+                        default=32, help="Image size")
     parser.add_argument("--anchor_size", type=int, default=32,
                         help="Anchor size for deciding batch size")
     parser.add_argument("--width", type=int, default=512,
